@@ -25,6 +25,9 @@ log_fmt = logging.Formatter(
             '[%(name)s.%(funcName)s:%(lineno)d] %(message)s',
         datefmt='%H:%M:%S')
 
+requests_log = logging.getLogger('requests')
+requests_log.propagate = False
+
 log_handler_local.setFormatter(log_fmt)
 log.addHandler(log_handler_local)
 
