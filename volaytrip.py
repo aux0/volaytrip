@@ -152,19 +152,22 @@ def upload_video(msg, room, threshold):
         log.debug(traceback.format_exc())
 
 
-def testing(video_url):
+def test(video_url):
     with youtube_dl.YoutubeDL() as ydl:
         res = ydl.extract_info(video_url, download=False)
 
-        # print(res['formats'])
+        # Full enumeration
+        #
+        # for i, f in enumerate(res['formats']):
+        #     print(i)
+        #     for k, v in f.items():
+        #         print('\t{}: {}'.format(k, v))
 
-        # for k, v in res:
-        #     print('{}: {}'.format(k, None))
-
+        # Filesizes
+        #
         for i, f in enumerate(res['formats']):
-            print(i)
-            for k, v in f.items():
-                print('\t{}: {}'.format(k, v))
+            if 'filesize' in f:
+                print('{}: {} MB'.format(i, f['filesize'] / 1024**2))
 
 
 def main():
