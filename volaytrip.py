@@ -3,6 +3,7 @@
 from functools import partial
 from itertools import zip_longest
 from volapi import Room
+import math
 import youtube_dl
 import requests
 import time
@@ -46,12 +47,9 @@ class VolaHandler(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
         current_chunk = 1
-        chunks = len(msg) // self.chunk_size
+        chunks = math.ceil(len(msg) / self.chunk_size)
 
-        if chunks * self.chunk_size < len(msg):
-            chunks += 1
-
-        for chunk in grouper(self.chunk_size, record.msg, ''):
+        for chunk in grouper(self.chunk_size, msg, ''):
             # TODO: remove
             print('({}/{}): {}'.format(current_chunk,
                                        chunks, ''.join(chunk)))
