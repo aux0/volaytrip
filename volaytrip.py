@@ -60,57 +60,98 @@ class VolaHandler(logging.Handler):
             current_chunk += 1
 
 
+class VideoUnavailable(RuntimeError):
+    pass
+
+
+def get_best_format(video_url, threshold, video=True, audio=True):
+    with youtube_dl.YoutubeDL() as ydl:
+        res = ydl.extract_info(video_url, download=False)
+
+    if not 'formats' in res or len(res['formats']) == 0:
+        raise VideoUnavailable('No formats found')
+
+    def check_fields(f):
+        return ('filesize' in f and
+                ('vcodec' in f if video else True) and
+                ('acodec' in f if audio else True))
+
+    def check_threshold(f):
+        return f['filesize'] <= threshold
+
+    def check_audio_video(f):
+        (video and f['vcodec'] != 'none')
+
+        return ((f['vcodec'] != 'none' if video else True) and
+                (f['acodec'] != 'none' if audio else True))
+
+    def by_filesize(f):
+        return f['filesize']
+
+    # some formats have no filesize field
+    formats = list(filter(check_fields, res['formats']))
+
+    # print(list(map(check_threshold, formats)))
+    formats = list(filter(check_threshold, formats))
+
+    # remove those which have no video/audio
+    formats = list(filter(check_audio_video, formats))
+
+    if not formats:
+        raise VideoUnavailable('No formats found')
+
+    # get the one with the biggest size
+    best_format = max(formats, key=by_filesize)
+
+    return best_format
+
+
 def upload_video(msg, room, threshold):
     try:
         tokens = msg.msg.split(' ')
 
-        if not (tokens[0] == ':rip' and len(tokens) == 2):
+        if len(tokens) < 2 or tokens[0] != ':rip':
             return
 
         video_url = tokens[1]
 
         log.debug('Got URL from \'{}\': {}'.format(msg.nick,
                                                    video_url))
-        # TODO: remove
-        print('got url: {}'.format(video_url))
 
-        with youtube_dl.YoutubeDL() as ydl:
-            res = ydl.extract_info(video_url, download=False)
+        av = tokens[2] if len(tokens) == 3 else None
 
-        if not 'formats' in res or len(res['formats']) == 0:
-            raise RuntimeError('Video unavailable.')
+        video = 'v' in av if av else True
+        audio = 'a' in av if av else True
 
-        formats = filter(lambda f: 'filesize' in f, res['formats'])
-        formats = filter(lambda f: f['filesize'] <= threshold, formats)
-        best_format = max(formats, key=lambda f: f.filesize)
+        log.debug('Video: {}, Audio: {}'.format(
+            'Y' if video else 'N', 'Y' if audio else 'N'))
 
-        filename = 'video.{}'.format(best_format['ext'])
+        best_format = get_best_format(video_url, threshold, video, audio)
+        filename = './video.{}'.format(best_format['ext'])
 
-        with open(filename) as f:
+        print('Best format: {}'.format(best_format))
+        log.debug('Saving to {}'.format(filename))
+
+        with open(filename, 'wb') as f:
             r = requests.get(best_format['url'], stream=True)
 
             if not r.ok:
-                raise RuntimeError('Request error')
+                raise VideoUnavailable('Request error: {}'.format(r.status_code))
 
-            for chunk in r.iter_content(1024):
+            for chunk in r.iter_content(1024**2):
                 f.write(chunk)
 
-        video = room.upload_file(filename) # does this shit block?
+        log.debug('Video saved')
+
+        video = room.upload_file(filename) # blocks until done
         time.sleep(0.5)
         room.post_chat('{}: @{}'.format(msg.nick, video))
         os.remove('./{}'.format(filename))
+    except VideoUnavailable as e:
+        log.debug('{}: Video unavailable: {}'.format(msg.nick, e.args[0]))
     except:
-        msg = '{}: Video unavailable.'.format(msg.nick)
-
-        log.debug(msg)
-        # TODO: remove
-        #room.post_chat(msg)
-
-        tb = sys.exc_info()[2]
-
-        log.debug(traceback.format_tb(tb))
-        # TODO: remove
-        print(traceback.format_tb(tb))
+        log.debug(traceback.format_tb(sys.exc_info()[2]))
+        log.debug(traceback.format_exc())
 
 
 def testing(video_url):
