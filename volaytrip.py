@@ -195,7 +195,7 @@ def main():
 
             if args.password:
                 room.user.login(password)
-                log.debug('Successful login.')
+                log.debug('Successful login')
 
             log.debug('Ripper started')
 
@@ -207,9 +207,10 @@ def main():
             # TODO: remove
             #print('Ripper started')
     except:
-        log.debug('Died before I even got a chance. :^(')
+        log.debug('Ripper died :^(')
 
         traceback.print_tb(sys.exc_info()[2])
+        traceback.print_exc()
 
 
 if __name__ == '__main__':
