@@ -140,14 +140,24 @@ def upload_video(msg, room, threshold):
                 f.write(chunk)
 
         log.debug('Video saved')
+        log.debug('Uploading video')
 
         video = room.upload_file(filename) # blocks until done
+
+        log.debug('Upload done')
+
         time.sleep(0.5)
         room.post_chat('{}: @{}'.format(msg.nick, video))
+
+        log.debug('Removing video')
+
         os.remove('./{}'.format(filename))
+
+        log.debug('Video removed')
     except VideoUnavailable as e:
         log.debug('{}: Video unavailable: {}'.format(msg.nick, e.args[0]))
     except:
+        log.debug('Unexpected error:')
         log.debug(traceback.format_tb(sys.exc_info()[2]))
         log.debug(traceback.format_exc())
 
@@ -204,9 +214,6 @@ def main():
                                               room=room,
                                               threshold=args.threshold))
             room.listen()
-
-            # TODO: remove
-            #print('Ripper started')
     except:
         log.debug('Ripper died :^(')
 

@@ -1,3 +1,5 @@
-* Split local/vola logging (filters?)
+* Split local/vola logging (filters, separate loggers?)
 * Better printing of exceptions
-* Only the first chunk is printed?
+* Only the first chunk is printed sometimes
+* Seems like YouTube separates audio/video streams?
+* Prettify imports
